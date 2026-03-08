@@ -15,7 +15,7 @@ const SIGNAL_STYLES = {
   rrg_transition:   { label: 'RRG Transition',   color: '#ff9ff3', bg: '#3a1a3a' },
 };
 
-const SignalsPanel = ({ onTickerClick }) => {
+const SignalsPanel = ({ onTickerClick, isExpanded, onToggleExpand }) => {
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState('significance');
@@ -72,17 +72,33 @@ const SignalsPanel = ({ onTickerClick }) => {
     <div style={{
       backgroundColor: '#1a1a1a', padding: '16px', borderRadius: '8px',
       border: '1px solid #2a2a2a',
+      ...(isExpanded ? { flex: 1, display: 'flex', flexDirection: 'column' } : {}),
     }}>
-      <h3 style={{ color: '#fff', margin: '0 0 12px 0', fontSize: '16px' }}>
-        Signals
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ color: '#fff', margin: 0, fontSize: '16px' }}>
+          Signals
+        </h3>
+        {onToggleExpand && (
+          <button
+            onClick={onToggleExpand}
+            title={isExpanded ? 'Exit full window' : 'Full window'}
+            style={{
+              background: 'none', border: '1px solid #3a3a3a', color: '#888',
+              cursor: 'pointer', padding: '4px 8px', borderRadius: '4px', fontSize: '14px',
+              lineHeight: 1, display: 'flex', alignItems: 'center',
+            }}
+          >
+            {isExpanded ? '\u2715' : '\u26F6'}
+          </button>
+        )}
+      </div>
 
       {loading ? (
         <div style={{ color: '#888', padding: '20px', textAlign: 'center' }}>Loading...</div>
       ) : sorted.length === 0 ? (
         <div style={{ color: '#888', padding: '20px', textAlign: 'center' }}>No signals</div>
       ) : (
-        <div style={{ overflowX: 'auto', maxHeight: '280px', overflowY: 'auto' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'auto', ...(isExpanded ? { flex: 1 } : { maxHeight: '280px' }) }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr>

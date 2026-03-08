@@ -38,6 +38,12 @@ export const getSectorsRRG = async () => {
   return transformRRGData(response.data.data || {});
 };
 
+// Countries RRG -> returns chart-ready array
+export const getCountriesRRG = async () => {
+  const response = await client.get('/countries/rrg');
+  return transformRRGData(response.data.data || {});
+};
+
 // All themes
 export const getThemes = async () => {
   const response = await client.get('/themes');

@@ -3,7 +3,7 @@ import { getThemes, createTheme, updateTheme, deleteTheme } from '../api/client'
 import ThemeForm from './ThemeForm';
 import TickerSuggestionPanel from './TickerSuggestionPanel';
 
-const ThemeManager = ({ onThemeSelect, onTickerClick }) => {
+const ThemeManager = ({ onThemeSelect, onTickerClick, isExpanded, onToggleExpand }) => {
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -129,6 +129,19 @@ const ThemeManager = ({ onThemeSelect, onTickerClick }) => {
           >
             {compact ? '▤' : '▦'}
           </button>
+          {onToggleExpand && (
+            <button
+              onClick={onToggleExpand}
+              title={isExpanded ? 'Exit full window' : 'Full window'}
+              style={{
+                background: 'none', border: '1px solid #3a3a3a', color: '#888',
+                cursor: 'pointer', padding: '4px 8px', borderRadius: '4px', fontSize: '14px',
+                lineHeight: 1, display: 'flex', alignItems: 'center',
+              }}
+            >
+              {isExpanded ? '\u2715' : '\u26F6'}
+            </button>
+          )}
           <button
             onClick={handleNewTheme}
             style={{

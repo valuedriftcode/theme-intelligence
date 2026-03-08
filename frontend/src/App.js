@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import TopBar from './components/TopBar';
 import RRGChart from './components/RRGChart';
 import ThemeManager from './components/ThemeManager';
@@ -9,27 +9,67 @@ import './App.css';
 function App() {
   const [selectedTheme, setSelectedTheme] = useState(null);
   const [selectedTicker, setSelectedTicker] = useState(null);
+  const [expandedPanel, setExpandedPanel] = useState(null);
+
+  const togglePanel = useCallback((panel) => {
+    setExpandedPanel(prev => prev === panel ? null : panel);
+  }, []);
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && expandedPanel) setExpandedPanel(null);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [expandedPanel]);
+
+  const rrgChart = (
+    <RRGChart
+      isExpanded={expandedPanel === 'rrg'}
+      onToggleExpand={() => togglePanel('rrg')}
+    />
+  );
+
+  const signalsPanel = (
+    <SignalsPanel
+      selectedTheme={selectedTheme}
+      onTickerClick={setSelectedTicker}
+      isExpanded={expandedPanel === 'signals'}
+      onToggleExpand={() => togglePanel('signals')}
+    />
+  );
+
+  const themeManager = (
+    <ThemeManager
+      onThemeSelect={setSelectedTheme}
+      onTickerClick={setSelectedTicker}
+      isExpanded={expandedPanel === 'themes'}
+      onToggleExpand={() => togglePanel('themes')}
+    />
+  );
 
   return (
     <div className="app-container">
       <TopBar />
 
-      <div className="main-content">
+      {expandedPanel && (
+        <div className="fullscreen-overlay">
+          {expandedPanel === 'rrg' && rrgChart}
+          {expandedPanel === 'signals' && signalsPanel}
+          {expandedPanel === 'themes' && themeManager}
+        </div>
+      )}
+
+      <div className="main-content" style={expandedPanel ? { visibility: 'hidden' } : undefined}>
         <div className="left-section">
-          <RRGChart />
+          {!expandedPanel && rrgChart}
           <div className="signals-wrapper">
-            <SignalsPanel
-              selectedTheme={selectedTheme}
-              onTickerClick={setSelectedTicker}
-            />
+            {!expandedPanel && signalsPanel}
           </div>
         </div>
 
         <div className="right-section">
-          <ThemeManager
-            onThemeSelect={setSelectedTheme}
-            onTickerClick={setSelectedTicker}
-          />
+          {!expandedPanel && themeManager}
         </div>
       </div>
 

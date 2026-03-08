@@ -103,6 +103,51 @@ SECTOR_ETFS = [
     "XLY"    # Consumer Discretionary
 ]
 
+# All investable single-country ETFs vs ACWI
+COUNTRY_ETFS = [
+    # Americas
+    "SPY",   # United States
+    "EWC",   # Canada
+    "EWZ",   # Brazil
+    "EWW",   # Mexico
+    "ARGT",  # Argentina
+    "ECH",   # Chile
+    "EPU",   # Peru
+    # Europe
+    "EWU",   # United Kingdom
+    "EWG",   # Germany
+    "EWQ",   # France
+    "EWI",   # Italy
+    "EWP",   # Spain
+    "EWN",   # Netherlands
+    "EWL",   # Switzerland
+    "EWD",   # Sweden
+    "EWO",   # Austria
+    "EWK",   # Belgium
+    "EDEN",  # Denmark
+    "EIRL",  # Ireland
+    "EPOL",  # Poland
+    # Asia-Pacific
+    "EWJ",   # Japan
+    "EWY",   # South Korea
+    "EWT",   # Taiwan
+    "FXI",   # China
+    "INDA",  # India
+    "EWH",   # Hong Kong
+    "EWS",   # Singapore
+    "EWM",   # Malaysia
+    "THD",   # Thailand
+    "VNM",   # Vietnam
+    "ENZL",  # New Zealand
+    "EWA",   # Australia
+    # Middle East & Africa
+    "EIS",   # Israel
+    "KSA",   # Saudi Arabia
+    "QAT",   # Qatar
+    "UAE",   # UAE
+    "EZA",   # South Africa
+]
+
 
 # ============================================================================
 # Error Handlers
@@ -180,6 +225,41 @@ def get_sectors_rrg():
     except Exception as e:
         logger.error(f"Error in get_sectors_rrg: {e}")
         return jsonify({"status": "error", "error": f"Failed to fetch sector RRG data: {str(e)}"}), 500
+
+
+# ============================================================================
+# Country RRG Endpoints
+# ============================================================================
+
+@app.route("/api/countries/rrg", methods=["GET"])
+def get_countries_rrg():
+    """Get RRG data for major country ETFs vs ACWI (global) benchmark."""
+    try:
+        logger.info("Fetching RRG data for countries")
+        rrg_data = get_sector_rrg_data(
+            sector_etfs=COUNTRY_ETFS,
+            benchmark="ACWI",
+            period="1y",
+            tail=5
+        )
+
+        if not rrg_data:
+            return jsonify({
+                "status": "error",
+                "error": "Unable to fetch live country RRG data from Yahoo Finance",
+                "data": {},
+                "count": 0
+            }), 503
+
+        return jsonify({
+            "status": "success",
+            "data": rrg_data,
+            "count": len(rrg_data)
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in get_countries_rrg: {e}")
+        return jsonify({"status": "error", "error": f"Failed to fetch country RRG data: {str(e)}"}), 500
 
 
 # ============================================================================
