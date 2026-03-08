@@ -1,0 +1,22 @@
+# User data
+backend/theme_intel.db
+
+# Environment
+backend/.env
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/build/
+
+# OS files
+.DS_Store
+
+# Scripts (optional - remove these lines if you want them in the repo)
+*.command
+start.sh
+stop.sh
