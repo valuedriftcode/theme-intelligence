@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getThemes, createTheme, updateTheme, deleteTheme } from '../api/client';
+import { getThemes, createTheme, updateTheme, deleteTheme, getTickerNames } from '../api/client';
 import ThemeForm from './ThemeForm';
 import TickerSuggestionPanel from './TickerSuggestionPanel';
 
@@ -13,10 +13,22 @@ const ThemeManager = ({ onThemeSelect, onTickerClick, isExpanded, onToggleExpand
   const [suggestingTheme, setSuggestingTheme] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [compact, setCompact] = useState(false);
+  const [tickerNames, setTickerNames] = useState({});
 
   useEffect(() => {
     loadThemes();
   }, []);
+
+  // Fetch company names whenever themes change
+  useEffect(() => {
+    const allTickers = [...new Set(themes.flatMap(t => t.tickers || []))];
+    const missing = allTickers.filter(t => !tickerNames[t]);
+    if (missing.length > 0) {
+      getTickerNames(missing).then(names => {
+        setTickerNames(prev => ({ ...prev, ...names }));
+      }).catch(() => {});
+    }
+  }, [themes]);
 
   const loadThemes = async () => {
     try {
@@ -359,6 +371,7 @@ const ThemeManager = ({ onThemeSelect, onTickerClick, isExpanded, onToggleExpand
                     <span
                       key={t}
                       onClick={() => onTickerClick && onTickerClick(t)}
+                      title={tickerNames[t] || t}
                       style={{
                         backgroundColor: '#1a3a1a',
                         color: '#00ff88',

@@ -1127,6 +1127,47 @@ def search_stocks():
 
 
 # ============================================================================
+# Ticker Name Lookup
+# ============================================================================
+
+@app.route("/api/tickers/names", methods=["POST"])
+def get_ticker_names():
+    """Look up company names for a list of tickers. Checks stock universe first, falls back to yfinance."""
+    try:
+        tickers = request.json.get("tickers", [])
+        if not tickers:
+            return jsonify({"status": "success", "data": {}}), 200
+
+        upper_tickers = [t.upper() for t in tickers]
+
+        # 1) Check stock universe (instant, local DB)
+        conn = stock_universe._get_conn()
+        placeholders = ",".join("?" for _ in upper_tickers)
+        rows = conn.execute(
+            f"SELECT ticker, name FROM stock_universe WHERE ticker IN ({placeholders})",
+            upper_tickers
+        ).fetchall()
+        conn.close()
+
+        names = {row["ticker"]: row["name"] for row in rows}
+
+        # 2) For any missing, fall back to yfinance info cache
+        missing = [t for t in upper_tickers if t not in names]
+        if missing:
+            infos = info_cache.batch_get_or_fetch(missing)
+            for ticker, info in infos.items():
+                name = info.get("shortName") or info.get("longName")
+                if name:
+                    names[ticker] = name
+
+        return jsonify({"status": "success", "data": names}), 200
+
+    except Exception as e:
+        logger.error(f"Error in get_ticker_names: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+# ============================================================================
 # Health Check
 # ============================================================================
 

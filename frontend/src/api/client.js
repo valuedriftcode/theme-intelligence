@@ -140,4 +140,10 @@ export const searchResearch = async (query) => {
   return response.data.data || [];
 };
 
+// Ticker name lookup
+export const getTickerNames = async (tickers) => {
+  const response = await client.post('/tickers/names', { tickers });
+  return response.data.data || {};
+};
+
 export default client;

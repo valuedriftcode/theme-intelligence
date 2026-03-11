@@ -25,6 +25,7 @@ function App() {
 
   const rrgChart = (
     <RRGChart
+      selectedTheme={selectedTheme}
       isExpanded={expandedPanel === 'rrg'}
       onToggleExpand={() => togglePanel('rrg')}
     />

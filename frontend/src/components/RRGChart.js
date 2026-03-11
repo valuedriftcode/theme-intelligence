@@ -3,7 +3,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, ZAxis, Customized,
 } from 'recharts';
-import { getSectorsRRG, getThemeRRG, getThemes, getThemeRRGBaskets, getCountriesRRG } from '../api/client';
+import { getSectorsRRG, getThemeRRG, getThemes, getThemeRRGBaskets, getCountriesRRG, getTickerNames } from '../api/client';
 
 const CENTER = 100; // Standard JdK RRG centers at 100 (ratio-to-SMA)
 
@@ -101,7 +101,7 @@ const CustomTooltip = ({ active, payload }) => {
   const quadrant = d.rsRatio >= CENTER
     ? (d.rsMomentum >= CENTER ? 'Leading' : 'Weakening')
     : (d.rsMomentum >= CENTER ? 'Improving' : 'Lagging');
-  const sectorName = SECTOR_NAMES[d.ticker] || COUNTRY_NAMES[d.ticker];
+  const sectorName = SECTOR_NAMES[d.ticker] || COUNTRY_NAMES[d.ticker] || d.companyName;
   const latestDate = d.history && d.history.length > 0 ? d.history[d.history.length - 1].date : null;
   return (
     <div style={{
@@ -229,7 +229,7 @@ const ExpandButton = ({ isExpanded, onToggleExpand }) => (
   </button>
 );
 
-const RRGChart = ({ isExpanded, onToggleExpand }) => {
+const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
   const [viewMode, setViewMode] = useState('sectors');
   const [themes, setThemes] = useState([]);
   const [selectedThemeId, setSelectedThemeId] = useState('');
@@ -253,6 +253,14 @@ const RRGChart = ({ isExpanded, onToggleExpand }) => {
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // When a theme is clicked in ThemeManager, switch RRG to show its stocks
+  useEffect(() => {
+    if (selectedTheme && selectedTheme.id) {
+      setViewMode('theme');
+      setSelectedThemeId(String(selectedTheme.id));
+    }
+  }, [selectedTheme]);
 
   useEffect(() => {
     setZoomQuadrant(null);
@@ -290,7 +298,11 @@ const RRGChart = ({ isExpanded, onToggleExpand }) => {
   const loadTheme = async (id) => {
     try {
       setLoading(true); setError(null);
-      setChartData(await getThemeRRG(id));
+      const data = await getThemeRRG(id);
+      // Fetch company names for theme tickers
+      const tickers = data.map(d => d.ticker);
+      const names = await getTickerNames(tickers).catch(() => ({}));
+      setChartData(data.map(d => ({ ...d, companyName: names[d.ticker] })));
       setBasketData([]);
     } catch (e) { setError('Failed to load theme'); }
     finally { setLoading(false); }
@@ -365,7 +377,7 @@ const RRGChart = ({ isExpanded, onToggleExpand }) => {
     }
 
     const dotR = isHovered ? 9 : (manyDots ? 5 : 7);
-    const friendlyName = SECTOR_NAMES[payload.ticker] || COUNTRY_NAMES[payload.ticker];
+    const friendlyName = SECTOR_NAMES[payload.ticker] || COUNTRY_NAMES[payload.ticker] || payload.companyName;
 
     return (
       <g
