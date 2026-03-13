@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, ZAxis, Customized,
@@ -242,14 +242,21 @@ const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
   const [hoveredTicker, setHoveredTicker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [missingTickers, setMissingTickers] = useState([]);
+
+  // Refs to avoid stale closures in the refresh interval
+  const viewModeRef = useRef(viewMode);
+  const selectedThemeIdRef = useRef(selectedThemeId);
+  viewModeRef.current = viewMode;
+  selectedThemeIdRef.current = selectedThemeId;
 
   useEffect(() => {
     getThemes().then(setThemes).catch(console.error);
     loadSectors();
     const interval = setInterval(() => {
-      if (viewMode === 'sectors') loadSectors();
-      else if (viewMode === 'countries') loadCountries();
-      else if (selectedThemeId) loadTheme(selectedThemeId);
+      if (viewModeRef.current === 'sectors') loadSectors();
+      else if (viewModeRef.current === 'countries') loadCountries();
+      else if (selectedThemeIdRef.current) loadTheme(selectedThemeIdRef.current);
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -271,7 +278,7 @@ const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
 
   const loadSectors = async () => {
     try {
-      setLoading(true); setError(null);
+      setLoading(true); setError(null); setMissingTickers([]);
       const [sectors, baskets] = await Promise.all([
         getSectorsRRG(),
         getThemeRRGBaskets().catch(() => []),
@@ -284,7 +291,7 @@ const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
 
   const loadCountries = async () => {
     try {
-      setLoading(true); setError(null);
+      setLoading(true); setError(null); setMissingTickers([]);
       const [countries, baskets] = await Promise.all([
         getCountriesRRG(),
         getThemeRRGBaskets().catch(() => []),
@@ -297,8 +304,15 @@ const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
 
   const loadTheme = async (id) => {
     try {
-      setLoading(true); setError(null);
+      setLoading(true); setError(null); setMissingTickers([]);
       const data = await getThemeRRG(id);
+      // Check which tickers from the theme are missing from RRG results
+      const theme = themes.find(t => String(t.id) === String(id));
+      if (theme) {
+        const returnedTickers = new Set(data.map(d => d.ticker));
+        const missing = (theme.tickers || []).filter(t => !returnedTickers.has(t));
+        setMissingTickers(missing);
+      }
       // Fetch company names for theme tickers
       const tickers = data.map(d => d.ticker);
       const names = await getTickerNames(tickers).catch(() => ({}));
@@ -501,6 +515,13 @@ const RRGChart = ({ selectedTheme, isExpanded, onToggleExpand }) => {
             <Scatter data={scatterData} shape={renderDot} />
           </ScatterChart>
         </ResponsiveContainer>
+      )}
+
+      {/* Missing tickers notice */}
+      {missingTickers.length > 0 && (
+        <div style={{ color: '#888', fontSize: '11px', marginTop: '8px', padding: '6px 10px', backgroundColor: '#1a1a0a', borderRadius: '4px', border: '1px solid #333' }}>
+          Not shown (insufficient data): {missingTickers.join(', ')}
+        </div>
       )}
 
       {/* Quadrant zoom */}
