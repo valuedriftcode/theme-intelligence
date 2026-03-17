@@ -140,6 +140,14 @@ export const searchResearch = async (query) => {
   return response.data.data || [];
 };
 
+// Heatmap
+export const getHeatmap = async (period = '1d', themeId = null) => {
+  const params = { period };
+  if (themeId) params.theme_id = themeId;
+  const response = await client.get('/heatmap', { params, timeout: 60000 });
+  return response.data;
+};
+
 // Ticker name lookup
 export const getTickerNames = async (tickers) => {
   const response = await client.post('/tickers/names', { tickers });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TopBar from './components/TopBar';
 import RRGChart from './components/RRGChart';
+import Heatmap from './components/Heatmap';
 import ThemeManager from './components/ThemeManager';
 import SignalsPanel from './components/SignalsPanel';
 import StockDetailPanel from './components/StockDetailPanel';
@@ -40,6 +41,14 @@ function App() {
     />
   );
 
+  const heatmap = (
+    <Heatmap
+      isExpanded={expandedPanel === 'heatmap'}
+      onToggleExpand={() => togglePanel('heatmap')}
+      onTickerClick={setSelectedTicker}
+    />
+  );
+
   const themeManager = (
     <ThemeManager
       onThemeSelect={setSelectedTheme}
@@ -56,6 +65,7 @@ function App() {
       {expandedPanel && (
         <div className="fullscreen-overlay">
           {expandedPanel === 'rrg' && rrgChart}
+          {expandedPanel === 'heatmap' && heatmap}
           {expandedPanel === 'signals' && signalsPanel}
           {expandedPanel === 'themes' && themeManager}
         </div>
@@ -64,6 +74,7 @@ function App() {
       <div className="main-content" style={expandedPanel ? { visibility: 'hidden' } : undefined}>
         <div className="left-section">
           {!expandedPanel && rrgChart}
+          {!expandedPanel && heatmap}
           <div className="signals-wrapper">
             {!expandedPanel && signalsPanel}
           </div>

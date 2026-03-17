@@ -26,6 +26,7 @@ frontend/src/
   api/client.js           — All API functions (Axios, base URL localhost:5001)
   components/
     RRGChart.js           — RRG visualization (sectors, countries, themes), quadrant zoom, trails
+    Heatmap.js            — Finviz-style treemap heatmap (all themes or single theme, 1D/1W/1M/3M/1Y)
     SignalsPanel.js        — Signal table (price moves, RSI, 52-week, RRG transitions)
     ThemeManager.js        — Theme CRUD, ticker management, compact/expanded views
     ThemeForm.js           — Create/edit theme form
@@ -81,4 +82,5 @@ The app is currently a manual dashboard. The goal is automated monitoring that s
 - `POST /api/themes` — Create theme
 - `GET /api/themes/:id/rrg` — Theme RRG data
 - `GET /api/signals` — Current signals
+- `GET /api/heatmap?period=1d&theme_id=5` — Heatmap performance data (1d/1w/1mo/3mo/1y)
 - `GET /api/stock/:ticker` — Stock research profile

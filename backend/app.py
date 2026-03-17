@@ -1186,6 +1186,157 @@ def health_check():
 
 
 # ============================================================================
+# Heatmap Endpoints
+# ============================================================================
+
+
+@app.route("/api/heatmap", methods=["GET"])
+def get_heatmap():
+    """
+    Get performance heatmap data for all themes and their tickers.
+
+    Query parameters:
+        period: Time period for performance (1d, 1w, 1mo, 3mo, 1y). Default: 1d
+        theme_id: Optional - filter to a single theme
+
+    Returns:
+        JSON with themes containing tickers with performance data
+    """
+    try:
+        period = request.args.get("period", "1d")
+        theme_id = request.args.get("theme_id")
+
+        # Map display periods to yfinance parameters
+        period_map = {
+            "1d": {"period": "5d", "compare": -1},     # last trading day
+            "1w": {"period": "1mo", "compare": -5},     # ~5 trading days back
+            "1mo": {"period": "3mo", "compare": -21},   # ~21 trading days back
+            "3mo": {"period": "6mo", "compare": -63},   # ~63 trading days back
+            "1y": {"period": "2y", "compare": -252},     # ~252 trading days back
+        }
+
+        if period not in period_map:
+            return jsonify({"error": f"Invalid period: {period}. Use 1d, 1w, 1mo, 3mo, 1y"}), 400
+
+        params = period_map[period]
+
+        # Get themes
+        if theme_id:
+            theme = data_store.get_theme(int(theme_id))
+            if not theme:
+                return jsonify({"error": "Theme not found"}), 404
+            themes = [theme]
+        else:
+            themes = data_store.get_all_themes()
+
+        if not themes:
+            return jsonify({"status": "success", "data": [], "period": period}), 200
+
+        # Collect all unique tickers
+        all_tickers = set()
+        for theme in themes:
+            all_tickers.update(theme.get("tickers", []))
+
+        all_tickers = list(all_tickers)
+        logger.info(f"Heatmap: fetching {len(all_tickers)} tickers for period={period}")
+
+        # Batch download price data
+        try:
+            df = yf.download(
+                all_tickers,
+                period=params["period"],
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=True,
+                progress=False,
+                threads=True,
+            )
+        except Exception as e:
+            logger.error(f"yfinance download failed: {e}")
+            return jsonify({"error": "Failed to fetch price data"}), 503
+
+        # Calculate performance for each ticker
+        perf = {}
+        for ticker in all_tickers:
+            try:
+                if len(all_tickers) == 1:
+                    closes = df["Close"].dropna()
+                else:
+                    closes = df[ticker]["Close"].dropna()
+
+                if len(closes) < 2:
+                    continue
+
+                current_price = float(closes.iloc[-1])
+                compare_idx = max(params["compare"], -len(closes))
+                old_price = float(closes.iloc[compare_idx])
+
+                if old_price > 0:
+                    change_pct = ((current_price - old_price) / old_price) * 100
+                    perf[ticker] = {
+                        "price": round(current_price, 2),
+                        "change_pct": round(change_pct, 2),
+                    }
+            except Exception:
+                continue
+
+        # Look up company names (stock universe first, yfinance fallback)
+        upper_tickers = [t.upper() for t in all_tickers]
+        conn = stock_universe._get_conn()
+        placeholders = ",".join("?" for _ in upper_tickers)
+        rows = conn.execute(
+            f"SELECT ticker, name FROM stock_universe WHERE ticker IN ({placeholders})",
+            upper_tickers
+        ).fetchall()
+        conn.close()
+        names = {row["ticker"]: row["name"] for row in rows}
+        missing_names = [t for t in upper_tickers if t not in names]
+        if missing_names:
+            infos = info_cache.batch_get_or_fetch(missing_names)
+            for ticker, info in infos.items():
+                name = info.get("shortName") or info.get("longName")
+                if name:
+                    names[ticker] = name
+
+        # Build response by theme
+        result = []
+        for theme in themes:
+            theme_tickers = []
+            for t in theme.get("tickers", []):
+                if t in perf:
+                    theme_tickers.append({
+                        "ticker": t,
+                        "name": names.get(t, t),
+                        "price": perf[t]["price"],
+                        "change_pct": perf[t]["change_pct"],
+                    })
+
+            if theme_tickers:
+                avg_change = sum(t["change_pct"] for t in theme_tickers) / len(theme_tickers)
+                result.append({
+                    "id": theme["id"],
+                    "name": theme["name"],
+                    "avg_change_pct": round(avg_change, 2),
+                    "tickers": theme_tickers,
+                })
+
+        # Sort themes by average performance
+        result.sort(key=lambda x: x["avg_change_pct"], reverse=True)
+
+        return jsonify({
+            "status": "success",
+            "data": result,
+            "period": period,
+            "theme_count": len(result),
+            "ticker_count": len(perf),
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in get_heatmap: {e}")
+        return jsonify({"error": "Failed to generate heatmap", "message": str(e)}), 500
+
+
+# ============================================================================
 # Application Startup
 # ============================================================================
 
